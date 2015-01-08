@@ -7,7 +7,7 @@ GMM::GMM() {
     mean.resize(3 * K); // 3 (mean)
     cov.resize(9 * K); // 3 * 3 (covariance)
     weight.resize(K); // 1 (component weight)
-    det.resize(K); // determinant
+    det.resize(K); // the determinant
     inv_cov.resize(9 * K); // the inverse of covariance
 }
 
@@ -66,4 +66,47 @@ void GMM::calc_det_and_inv(int index) {
     }
 }
 
+void GMM::init_learning() {
+    sum.clear();
+    sum.resize(3 * K, 0); // the sum of RGB
+    product.clear();
+    product.resize(9 * K, 0); // the sum of product of RGB
+    sample.clear();
+    sample.resize(K, 0); // the number of samples for each component
+    total_sample = 0; // the number of all the samples
+}
 
+void GMM::add_sample(int index, const Vec3d color) {
+    for (int i = 0; i < 3; ++i)
+        sum[3 * index + i] += color[i];
+    for (int i = 0; i < 3; ++i)
+        for (int j = 0; j < 3; ++j)
+            product[9 * index + 3 * i + j] = color[i] * color[j];
+    ++sample[index];
+    ++total_sample;
+}
+
+void GMM::end_learning() {
+    for (int i = 0; i < K; ++i) {
+        if (sample[i] == 0) {
+            weight[i] = 0;   
+        } else {
+            weight[i] = double(sample[i]) / total_sample;
+            printf("i = %d, size = %d\n", i, sum.size());
+            for (int j = 0; j < 3; ++j)
+                mean[3 * i + j] = sum[3 * i + j] / sample[i];
+            for (int j = 0; j < 3; ++j)
+                for (int k = 0; k < 3; ++k)
+                    cov[9 * i + 3 * j + k] = product[9 * i + 3 * j + k] / sample[i] - mean[3 * i + j] * mean[3 * i + k];
+            double *c = &cov[9 * i];
+            double d = c[0] * (c[4]*c[8] - c[5]*c[7]) - c[1] * (c[3]     * c[8] - c[5] * c[6]) + c[2] * (c[3] * c[7] - c[4] * c[6]);
+            if (d <= std::numeric_limits<double>::epsilon()) {
+                c[0] += 0.01;
+                c[4] += 0.01;
+                c[8] += 0.01;
+            }
+            calc_det_and_inv(i);
+        }
+    }
+    printf("total = %d\n", total_sample);
+}

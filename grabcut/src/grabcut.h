@@ -1,10 +1,7 @@
 #ifndef GRABCUT_H
 #define GRABCUT_H
 
-namespace szy {
+#include "gmm.h"
 
-void grabcut(const Mat &input, const Rect &rect, Mat &output, int iterCount = 1000) {    
-}
-};
-
+void grabCut(const cv::Mat &input, cv::Rect &rect, cv::Mat &output, int iterCount = 10); 
 #endif

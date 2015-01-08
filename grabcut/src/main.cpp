@@ -1,14 +1,22 @@
+#include "grabcut.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <cstdio>
-#include <cstdlib>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <iostream>
 
-using namespace std;
 using namespace cv;
+using namespace std;
 
 int main(int argc, char *argv[]) {
-    Mat mat = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-    mat.convertTo(mat, CV_32FC3, 1.0 / 255);
-    
-    waitKey(0);    
+    Mat input = imread(argv[1]);
+    int iterCount = atoi(argv[2]); 
+    Rect rect(90, 0, input.rows, input.cols);
+    Mat output;
+    grabCut(input, rect, output, iterCount);
+    compare(output, GC_PR_FGD, output, CMP_EQ);
+    Mat fgd(input.size(), CV_8UC3, Scalar(255,255,255));
+    input.copyTo(fgd, output);
+    imshow("input", input);
+    imshow("output", fgd);
+    waitKey(0); 
 }
