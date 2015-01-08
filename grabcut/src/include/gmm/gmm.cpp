@@ -1,6 +1,7 @@
 #include "gmm.h"
 #include <cstring>
 
+using namespace std;
 using namespace cv;
 
 GMM::GMM() {
@@ -21,6 +22,7 @@ double GMM::calc_prob (const Vec3d color) const {
 double GMM::calc_prob(int index, const Vec3d color) const {
     double ret = 0;
     if (weight[index] > 0) {
+        CV_Assert(det[index] > numeric_limits<double>::epsilon());        
         // diff = color - mean
         Vec3d diff = color;
         for (int i = 0; i < 3; ++i)
@@ -51,8 +53,9 @@ void GMM::calc_det_and_inv(int index) {
     if (weight[index] > 0) {
         // calculate the determinant
         double *c = &cov[9 * index];        
-        det[index] = c[0] * (c[4]*c[8] - c[5]*c[7]) - c[1] * (c[3] * c[8] - c[5] * c[6]) + c[2] * (c[3] * c[7] - c[4] * c[6]);
+        det[index] = c[0] * (c[4] * c[8] - c[5] * c[7]) - c[1] * (c[3] * c[8] - c[5] * c[6]) + c[2] * (c[3] * c[7] - c[4] * c[6]);
         // calculate the inverse of covariance
+        CV_Assert(det[index] > numeric_limits<double>::epsilon());
         double *ic = &inv_cov[9 * index];
         ic[0] = (c[4] * c[8] - c[5] * c[7]) / det[index];
         ic[1] = -(c[1] * c[8] - c[2] * c[7]) / det[index];
@@ -81,7 +84,7 @@ void GMM::add_sample(int index, const Vec3d color) {
         sum[3 * index + i] += color[i];
     for (int i = 0; i < 3; ++i)
         for (int j = 0; j < 3; ++j)
-            product[9 * index + 3 * i + j] = color[i] * color[j];
+            product[9 * index + 3 * i + j] += color[i] * color[j];
     ++sample[index];
     ++total_sample;
 }
@@ -92,15 +95,14 @@ void GMM::end_learning() {
             weight[i] = 0;   
         } else {
             weight[i] = double(sample[i]) / total_sample;
-            printf("i = %d, size = %d\n", i, sum.size());
             for (int j = 0; j < 3; ++j)
                 mean[3 * i + j] = sum[3 * i + j] / sample[i];
             for (int j = 0; j < 3; ++j)
                 for (int k = 0; k < 3; ++k)
                     cov[9 * i + 3 * j + k] = product[9 * i + 3 * j + k] / sample[i] - mean[3 * i + j] * mean[3 * i + k];
             double *c = &cov[9 * i];
-            double d = c[0] * (c[4]*c[8] - c[5]*c[7]) - c[1] * (c[3]     * c[8] - c[5] * c[6]) + c[2] * (c[3] * c[7] - c[4] * c[6]);
-            if (d <= std::numeric_limits<double>::epsilon()) {
+            double d = c[0] * (c[4] * c[8] - c[5] * c[7]) - c[1] * (c[3] * c[8] - c[5] * c[6]) + c[2] * (c[3] * c[7] - c[4] * c[6]);
+            if (d <= numeric_limits<double>::epsilon()) {
                 c[0] += 0.01;
                 c[4] += 0.01;
                 c[8] += 0.01;

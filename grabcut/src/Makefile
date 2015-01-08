@@ -4,11 +4,9 @@ OPENCV=`pkg-config opencv --cflags --libs`
 LIBS=$(OPENCV)
 TARGET=main
 
-SRC=$(shell ls *.cpp)
-
 all: $(TARGET)
 
-$(TARGET): $(SRC)
+$(TARGET): main.cpp grabcut.cpp include/gmm/gmm.cpp
 		$(CXX) $(CXXFLAGS) $(LIBS) $+ -o $@
 
 clean:

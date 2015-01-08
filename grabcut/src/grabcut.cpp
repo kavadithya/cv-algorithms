@@ -1,6 +1,7 @@
 #include "grabcut.h"
 #include <opencv2/imgproc/imgproc.hpp>
-#include "gcgraph.hpp"
+#include "include/opencv/gcgraph.hpp"
+#include "include/gmm/gmm.h"
 
 using namespace std;
 using namespace cv;
@@ -27,7 +28,6 @@ void init_GMM(const Mat &input, const Mat &mask, GMM &bgdGMM, GMM &fgdGMM) {
                 bgdSample.push_back((Vec3d)input.at<Vec3b>(i, j));
             else
                 fgdSample.push_back((Vec3d)input.at<Vec3b>(i, j));
-    printf("%d\n",  bgdSample.size());
     // for bgdGMM
     vector<int> bgdLabel(bgdSample.size());
     kmeans(Mat(bgdSample.size(), 3, CV_32FC1, &bgdSample[0][0]), GMM::K, bgdLabel, TermCriteria(CV_TERMCRIT_ITER, iterCount, 0.0), 0, KMEANS_PP_CENTERS);
@@ -100,12 +100,11 @@ void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &upright
 
 void assign_and_learn(const Mat &input, const Mat &mask, GMM& bgdGMM, GMM& fgdGMM) {
     // assign components and learn
-    vector<vector<pair<int, int>>> index(GMM::K);
     bgdGMM.init_learning();
     fgdGMM.init_learning();
     for (int i = 0; i < input.rows; ++i)
         for (int j = 0; j < input.cols; ++j)
-            if (mask.at<uchar>(i, j) == GC_BGD || mask.at<uchar>(i, j) == GC_PR_FGD)
+            if (mask.at<uchar>(i, j) == GC_BGD || mask.at<uchar>(i, j) == GC_PR_BGD)
                 bgdGMM.add_sample(bgdGMM.which((Vec3d)input.at<Vec3b>(i, j)), (Vec3d)input.at<Vec3b>(i, j));
             else
                 fgdGMM.add_sample(fgdGMM.which((Vec3d)input.at<Vec3b>(i, j)), (Vec3d)input.at<Vec3b>(i, j));
@@ -125,12 +124,9 @@ void construct_graph(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &
             if (mask.at<uchar>(i, j) == GC_PR_BGD || mask.at<uchar>(i, j) == GC_PR_FGD) {
                 fromSource = -log(bgdGMM.calc_prob((Vec3d)input.at<Vec3b>(i, j)));
                 toSink = -log(fgdGMM.calc_prob((Vec3d)input.at<Vec3b>(i, j)));
-            } else if (mask.at<uchar>(i, j) == GC_BGD) {
+            } else {
                 fromSource = 0;
                 toSink = lambda;
-            } else {
-                fromSource = lambda;
-                toSink = 0;
             }
             graph.addTermWeights(index, fromSource, toSink);
             
