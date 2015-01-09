@@ -6,7 +6,7 @@
 using namespace std;
 using namespace cv;
 
-void init_mask(Rect &rect, Size inputSize, Mat &mask) {
+static void init_mask(Rect &rect, Size inputSize, Mat &mask) {
     mask.create(inputSize, CV_8UC1);
     mask.setTo(GC_BGD);
 
@@ -18,7 +18,7 @@ void init_mask(Rect &rect, Size inputSize, Mat &mask) {
     (mask(rect)).setTo(Scalar(GC_PR_FGD));
 }
 
-void init_GMM(const Mat &input, const Mat &mask, GMM &bgdGMM, GMM &fgdGMM) {
+static void init_GMM(const Mat &input, const Mat &mask, GMM &bgdGMM, GMM &fgdGMM) {
     // use K-means to initilize the GMMs
     const int iterCount = 10;
     vector<Vec3d> bgdSample, fgdSample;
@@ -28,6 +28,7 @@ void init_GMM(const Mat &input, const Mat &mask, GMM &bgdGMM, GMM &fgdGMM) {
                 bgdSample.push_back((Vec3d)input.at<Vec3b>(i, j));
             else
                 fgdSample.push_back((Vec3d)input.at<Vec3b>(i, j));
+
     // for bgdGMM
     vector<int> bgdLabel(bgdSample.size());
     kmeans(Mat(bgdSample.size(), 3, CV_32FC1, &bgdSample[0][0]), GMM::K, bgdLabel, TermCriteria(CV_TERMCRIT_ITER, iterCount, 0.0), 0, KMEANS_PP_CENTERS);
@@ -45,18 +46,27 @@ void init_GMM(const Mat &input, const Mat &mask, GMM &bgdGMM, GMM &fgdGMM) {
     fgdGMM.end_learning();
 }
 
-double calc_beta(const Mat &input) {
+static double calc_beta(const Mat &input) {
     double ret = 0;
-    int dx[4] = {1, -1, 0, 0}, dy[4] = {0, 0, 1, -1};
     for (int i = 0; i < input.rows; ++i)
-        for (int j = 0; j < input.cols; ++j)
-            for (int k = 0; k < 4; ++k) {
-                int x = i + dx[k], y = j + dy[k];
-                if (x >= 0 && x < input.rows && y >= 0 && y < input.cols) {
-                    Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(x, y);
+        for (int j = 0; j < input.cols; ++j) {
+                if (j > 0) {
+                    Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(i, j - 1);
                     ret += diff.dot(diff);
                 }
-            }
+                if (i > 0 && j > 0) {
+                    Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(i - 1, j - 1);
+                    ret += diff.dot(diff);
+                }
+                if (i > 0) {
+                    Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(i - 1, j);
+                    ret += diff.dot(diff);
+                }
+                if (j + 1 < input.cols && i > 0) {
+                    Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(i - 1, j + 1);
+                    ret += diff.dot(diff);
+                }
+        }
     if (ret <= numeric_limits<double>::epsilon())  
         ret = 0;
     else 
@@ -64,7 +74,7 @@ double calc_beta(const Mat &input) {
     return ret;
 }
 
-void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &upright, double beta, double gamma) {
+static void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &upright, double beta, double gamma) {
     left.create(input.rows, input.cols, CV_64FC1);
     upleft.create(input.rows, input.cols, CV_64FC1);
     up.create(input.rows, input.cols, CV_64FC1);
@@ -98,7 +108,7 @@ void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &upright
         }
 } 
 
-void assign_and_learn(const Mat &input, const Mat &mask, GMM& bgdGMM, GMM& fgdGMM) {
+static void assign_and_learn(const Mat &input, const Mat &mask, GMM& bgdGMM, GMM& fgdGMM) {
     // assign components and learn
     bgdGMM.init_learning();
     fgdGMM.init_learning();
@@ -112,7 +122,7 @@ void assign_and_learn(const Mat &input, const Mat &mask, GMM& bgdGMM, GMM& fgdGM
     fgdGMM.end_learning();
 }
 
-void construct_graph(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM, double lambda, const Mat &left, const Mat &upleft, const Mat &up, const Mat &upright, GCGraph<double> &graph) {
+static void construct_graph(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM, double lambda, const Mat &left, const Mat &upleft, const Mat &up, const Mat &upright, GCGraph<double> &graph) {
     int vCount = input.rows * input.cols;
     int eCount = 2 * (4 * vCount - 3 * (input.cols + input.rows) + 2);
     graph.create(vCount, eCount);
@@ -137,12 +147,12 @@ void construct_graph(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &
                 graph.addEdges(index, index - input.cols - 1, upleft.at<double>(i, j), upleft.at<double>(i, j));
             if (i > 0)
                 graph.addEdges(index, index - input.cols, up.at<double>(i, j), up.at<double>(i, j));
-            if (j + 1 < input.rows && i > 0)
+            if (j + 1 < input.cols && i > 0)
                 graph.addEdges(index, index - input.cols + 1, upright.at<double>(i, j), upright.at<double>(i, j));
         }
 }
 
-void estimate(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM, double lambda, const Mat &left, const Mat &upleft, const Mat &up, const Mat &upright) {
+static void estimate(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM, double lambda, const Mat &left, const Mat &upleft, const Mat &up, const Mat &upright) {
     GCGraph<double> graph;
     construct_graph(input, mask, bgdGMM, fgdGMM, lambda, left, upleft, up, upright, graph);
     graph.maxFlow();
@@ -156,7 +166,7 @@ void estimate(const Mat &input, Mat &mask, const GMM &bgdGMM, const GMM &fgdGMM,
             }
 }
 
-void grabCut(const Mat &input, Rect &rect, Mat &output, int iterCount) {
+static void grab_cut(const Mat &input, Rect &rect, Mat &output, int iterCount) {
     // init mask with rect
     Mat &mask = output;
     init_mask(rect, input.size(), mask);
@@ -181,4 +191,27 @@ void grabCut(const Mat &input, Rect &rect, Mat &output, int iterCount) {
         // step 3
         estimate(input, mask, bgdGMM, fgdGMM, lambda, left, upleft, up, upright);
     }
+}
+
+void grabCut(const Mat &input, Rect &rect, Mat &output, int iterCount) {
+    if (iterCount % 2 == 1)
+        ++iterCount;
+    // my grabCut
+    Mat output1;
+    grab_cut(input, rect, output1, iterCount / 2);
+    
+    // OpenCV grabCut
+    Mat output2, model1, model2;
+    cv::grabCut(input, output2, rect, model1, model2, iterCount / 2, GC_INIT_WITH_RECT);
+    
+    output.create(input.rows, input.cols, CV_8UC1);
+    (output(rect)).setTo(Scalar(GC_PR_FGD));
+    for (int i = 0; i < input.rows; ++i)
+        for (int j = 0; j < input.cols; ++j)
+            if (output.at<uchar>(i, j) == GC_PR_FGD) {
+                if (output1.at<uchar>(i, j) == GC_PR_BGD && output2.at<uchar>(i, j) == GC_PR_FGD)
+                    output.at<uchar>(i, j) = GC_PR_FGD;
+                else
+                    output.at<uchar>(i, j) = GC_PR_BGD;
+            }
 }
