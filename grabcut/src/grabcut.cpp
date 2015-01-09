@@ -79,6 +79,7 @@ static void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &
     upleft.create(input.rows, input.cols, CV_64FC1);
     up.create(input.rows, input.cols, CV_64FC1);
     upright.create(input.rows, input.cols, CV_64FC1);
+    double gamma2 = gamma / sqrt(2.0);
     for (int i = 0; i < input.rows; ++i)
         for (int j = 0; j < input.cols; ++j) {
             if (j > 0) {
@@ -89,7 +90,7 @@ static void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &
             }
             if (i > 0 && j > 0) {
                 Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(i - 1, j - 1);
-                upleft.at<double>(i, j) = gamma / sqrt(2.0) * exp(-beta * diff.dot(diff));
+                upleft.at<double>(i, j) = gamma2 * exp(-beta * diff.dot(diff));
             } else {
                 upleft.at<double>(i, j) = 0;
             }
@@ -101,7 +102,7 @@ static void calc_weight(const Mat &input, Mat &left, Mat &upleft, Mat &up, Mat &
             }
             if (j + 1 < input.cols && i > 0) {
                 Vec3d diff = (Vec3d)input.at<Vec3b>(i, j) - (Vec3d)input.at<Vec3b>(i - 1, j + 1);
-                upright.at<double>(i, j) = gamma / sqrt(2.0) * exp(-beta * diff.dot(diff));
+                upright.at<double>(i, j) = gamma2 * exp(-beta * diff.dot(diff));
             } else {
                 upright.at<double>(i, j) = 0;
             }
