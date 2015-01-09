@@ -194,24 +194,6 @@ static void grab_cut(const Mat &input, Rect &rect, Mat &output, int iterCount) {
 }
 
 void grabCut(const Mat &input, Rect &rect, Mat &output, int iterCount) {
-    if (iterCount % 2 == 1)
-        ++iterCount;
-    // my grabCut
-    Mat output1;
-    grab_cut(input, rect, output1, iterCount / 2);
-    
-    // OpenCV grabCut
-    Mat output2, model1, model2;
-    cv::grabCut(input, output2, rect, model1, model2, iterCount / 2, GC_INIT_WITH_RECT);
-    
-    output.create(input.rows, input.cols, CV_8UC1);
-    (output(rect)).setTo(Scalar(GC_PR_FGD));
-    for (int i = 0; i < input.rows; ++i)
-        for (int j = 0; j < input.cols; ++j)
-            if (output.at<uchar>(i, j) == GC_PR_FGD) {
-                if (output1.at<uchar>(i, j) == GC_PR_BGD && output2.at<uchar>(i, j) == GC_PR_FGD)
-                    output.at<uchar>(i, j) = GC_PR_FGD;
-                else
-                    output.at<uchar>(i, j) = GC_PR_BGD;
-            }
+    grab_cut(input, rect, output, iterCount);
+    return;
 }

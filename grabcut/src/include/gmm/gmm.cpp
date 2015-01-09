@@ -110,5 +110,4 @@ void GMM::end_learning() {
             calc_det_and_inv(i);
         }
     }
-    printf("total = %d\n", total_sample);
 }
