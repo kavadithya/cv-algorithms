@@ -1,11 +1,13 @@
 #include "dehaze.h"
 #include <algorithm>
+#include <opencv2/imgproc/imgproc.hpp>
 
 using namespace std;
 using namespace cv;
 
 const int patchSize = 15;
 const double aerialPerspectiveFactor = 0.95;
+const double minTransmission = 0.1;
 
 static void calc_dark_channel(const Mat &input, Mat &darkChannel) {
 	darkChannel.create(input.rows, input.cols, CV_64FC1);
@@ -61,10 +63,24 @@ void estimate_transmission(const Mat &input, const Vec3d &light, Mat &transmissi
 		}
 }
 
+void recover_image(const Mat &input, const Mat &transmission, const Vec3d &light, Mat &output) {
+	output = input.clone();
+	for (int i = 0; i < input.rows; ++i)
+		for (int j = 0; j < input.cols; ++j) {
+			Vec3d color = input.at<Vec3b>(i, j);
+			output.at<Vec3b>(i, j) = (color - light) / max(transmission.at<double>(i, j), minTransmission) + light;
+		}
+}
+
 void dehaze(const Mat &input, Mat &output) {
 	Mat darkChannel;
 	calc_dark_channel(input, darkChannel);
+
 	Vec3d light = estimate_atmospheric_light(input, darkChannel);
+	
 	Mat transmission;
 	estimate_transmission(input, light, transmission);
+	GaussianBlur(transmission, transmission, Size(41, 41), 20);
+
+	recover_image(input, transmission, light, output);
 }
