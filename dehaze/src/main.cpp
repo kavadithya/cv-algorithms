@@ -1,14 +1,14 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <cstdio>
-#include <cstdlib>
+#include "dehaze.h"
 
 using namespace std;
 using namespace cv;
 
 int main(int argc, char *argv[]) {
-    Mat mat = imread(argv[1], CV_LOAD_IMAGE_COLOR);
-    mat.convertTo(mat, CV_32FC3, 1.0 / 255);
-    
+    Mat input = imread(argv[1]);
+    Mat output;
+    dehaze(input, output);
+    imshow("output", output);
     waitKey(0);    
 }
