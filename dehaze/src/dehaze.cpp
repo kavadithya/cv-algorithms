@@ -64,12 +64,15 @@ void estimate_transmission(const Mat &input, const Vec3d &light, Mat &transmissi
 		}
 }
 
-void recover_image(const Mat &input, const Mat &transmission, const Vec3d &light, Mat &output) {
+void recover_image(const Mat &input, Mat &transmission, const Vec3d &light, Mat &output) {
 	output = input.clone();
 	for (int i = 0; i < input.rows; ++i)
+        for (int j = 0; j < input.cols; ++j)
+            transmission.at<double>(i, j) = max(transmission.at<double>(i, j), minTransmission);
+    for (int i = 0; i < input.rows; ++i)
 		for (int j = 0; j < input.cols; ++j) {
 			Vec3d color = input.at<Vec3b>(i, j);
-			output.at<Vec3b>(i, j) = (color - light) / max(transmission.at<double>(i, j), minTransmission) + light;
+			output.at<Vec3b>(i, j) = (color - light) / transmission.at<double>(i, j) + light;
 		}
 }
 

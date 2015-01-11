@@ -93,13 +93,13 @@ void soft_matting(const Mat &input, const Mat &transmission, Mat &refinedTransmi
     // set the vector t'
     printf("set the vector t' ...\n");
     VectorXd tt(VectorXd::Zero(totalPxl));
-    for (int i = 0; i < totalPxl; ++i)
+    for (int i = 0; i < totalPxl; ++i) {
         tt[i] = transmission.at<double>(i / input.cols, i % input.cols);
+    }
 
     // solve the sparse linear system (L + lambda * U) * t = lambda * t'
     printf("solve the sparse linear system (L + lambda * U) * t = lambda * t' ...\n");  
     L += lambda * U;
-    // BiCGSTAB<SparseMatrix<double>, IncompleteLUT<double>> solver;
     SimplicialLDLT<SparseMatrix<double>> solver;
     solver.compute(L);
     if (solver.info() != Success) {
@@ -116,7 +116,6 @@ void soft_matting(const Mat &input, const Mat &transmission, Mat &refinedTransmi
     // set the answer back to refinedTransmission
     printf("set the answer back to refinedTransmission ...\n");
     for (int i = 0; i < input.rows; ++i)
-        for (int j = 0; j < input.cols; ++j) {
+        for (int j = 0; j < input.cols; ++j)
             refinedTransmission.at<double>(i, j) = t[i * input.cols + j];
-        }
 }

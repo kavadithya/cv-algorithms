@@ -1,7 +1,8 @@
 CXX=g++
 CXXFLAGS=-std=c++11 -Wall -O3 -g -MMD -MP
 OPENCV=`pkg-config opencv --cflags --libs`
-LIBS=$(OPENCV)
+EIGEN=-I/include/Eigen
+LIBS=$(OPENCV) $(EIGEN)
 TARGET=main
 
 SRC=$(shell ls *.cpp)
