@@ -1,5 +1,5 @@
 CXX=g++
-CXXFLAGS=-std=c++11 -Wall -O3 -g -MMD -MP
+CXXFLAGS=-std=c++11 -Wall -O2 -g -MMD -MP
 OPENCV=`pkg-config opencv --cflags --libs`
 LIBS=$(OPENCV)
 TARGET=main

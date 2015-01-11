@@ -1,4 +1,5 @@
 #include "dehaze.h"
+#include "softmatting.h"
 #include <algorithm>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -80,7 +81,10 @@ void dehaze(const Mat &input, Mat &output) {
 	
 	Mat transmission;
 	estimate_transmission(input, light, transmission);
-	GaussianBlur(transmission, transmission, Size(41, 41), 20);
+	
+    Mat refinedTransmission;
+    soft_matting(input, transmission, refinedTransmission);
+    // GaussianBlur(transmission, transmission, Size(41, 41), 20);
 
-	recover_image(input, transmission, light, output);
+	recover_image(input, refinedTransmission, light, output);
 }
