@@ -110,7 +110,7 @@ void soft_matting(const Mat &input, const Mat &transmission, Mat &refinedTransmi
     VectorXd t = solver.solve(tt);
     if (solver.info() != Success) {
         printf("solving failed\n");
-        // return;
+        return;
     }
 
     // set the answer back to refinedTransmission

@@ -73,7 +73,7 @@ void recover_image(const Mat &input, const Mat &transmission, const Vec3d &light
 		}
 }
 
-void dehaze(const Mat &input, Mat &output) {
+void dehaze(const Mat &input, Mat &semi_output, Mat &output) {
 	Mat darkChannel;
 	calc_dark_channel(input, darkChannel);
 
@@ -82,6 +82,9 @@ void dehaze(const Mat &input, Mat &output) {
 	Mat transmission;
 	estimate_transmission(input, light, transmission);
 	
+    // semi_output (no soft matting)
+    recover_image(input, transmission, light, semi_output);
+
     Mat refinedTransmission;
     soft_matting(input, transmission, refinedTransmission);
     // GaussianBlur(transmission, transmission, Size(41, 41), 20);
