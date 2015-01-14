@@ -12,5 +12,7 @@ int main(int argc, char *argv[]) {
     imshow("input", input);
     imshow("semi_output", semi_output);
     imshow("output", output);
+    imwrite("semi_output.png", semi_output);
+    imwrite("output.png", output);
     waitKey(0);    
 }
