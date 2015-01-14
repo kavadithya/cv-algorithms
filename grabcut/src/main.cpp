@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
     Mat fgd(input.size(), CV_8UC3, Scalar(255,255,255));
     input.copyTo(fgd, output);
     show_image(fgd);
+    imwrite("output.png", fgd);
     waitKey(0); 
     return 0;
 }
