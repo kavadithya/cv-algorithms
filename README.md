@@ -1,4 +1,4 @@
-cv_algorithms
+cv-algorithms
 =============
 
 A set of implementations of algorithms of computer vision.
